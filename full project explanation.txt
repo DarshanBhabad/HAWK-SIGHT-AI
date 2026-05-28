@@ -1,0 +1,491 @@
+================================================================================
+                 HAWK SIGHT — FULL PROJECT EXPLANATION
+        (Beginner to PhD level · plain language · viva-ready · with the math)
+================================================================================
+
+HOW TO READ THIS FILE
+  Each part is built in layers:
+     (A) Simple idea (explain to a friend)
+     (B) The data / how it works
+     (C) The mathematics (slow build-up to advanced)
+     (D) HOW it works · WHY we did it · WHERE it is used · WHY it is useful
+     (E) Likely VIVA questions + short, confident answers
+
+  One golden thread runs through everything: HONESTY. We never fake an accuracy
+  number. Every claim is measured on data the model has never seen.
+
+CONTENTS
+  PART 1 — The Data: what we used and how
+  PART 2 — The Main Model: 3-Month Price Outlook (Logistic Regression)
+  PART 3 — The News Sentiment Model (our own NLP)
+  PART 4 — The Auto-Buy Model (Markowitz Portfolio Optimisation)
+  PART 5 — Uniqueness, Overall Result, Honesty & Accuracy
+
+  Tech stack (one line): Python Flask + MySQL backend (JWT login, WebSockets),
+  scikit-learn + SciPy for ML/optimisation, yfinance + Finnhub for data, and an
+  HTML/CSS/JavaScript (Tailwind + Chart.js) dashboard.
+
+
+================================================================================
+PART 1 — THE DATA: WHAT WE USED AND HOW
+================================================================================
+
+(A) SIMPLE IDEA
+    A model is only as good as the food (data) you give it. We used three kinds
+    of data:
+      1. Stock price history  (numbers)        -> for the 3-month outlook model
+      2. Financial news headlines (text)       -> for the sentiment model
+      3. A labelled news dataset (text+labels) -> to TRAIN the sentiment model
+    Plus a database that stores users, money, trades and favourites.
+
+(B) THE DATA / HOW IT WORKS
+
+   1. STOCK PRICE DATA  — source: Yahoo Finance (the free "yfinance" library)
+        - For each stock (AAPL, MSFT, GOOGL, AMZN, TSLA, NVDA) we download the
+          full daily history: Open, High, Low, Close, Volume (called "OHLCV").
+        - We mostly use the adjusted Close price (adjusted = corrected for stock
+          splits and dividends, so old prices are comparable to new ones).
+        - "How much": we pull the MAXIMUM history available (often 10-40 years)
+          for training, and ~4 years at prediction time for the rolling windows.
+
+   2. NEWS DATA  — source: Finnhub API (we already had a free API key)
+        - For a chosen stock we fetch the last ~7 days of company-news headlines
+          (headline, summary, source, time, link).
+        - This is the raw text the sentiment model reads.
+
+   3. SENTIMENT TRAINING DATA — "Financial PhraseBank" (Malo et al., 2014)
+        - ~4,800 real finance sentences, each hand-labelled by experts as
+          POSITIVE, NEGATIVE or NEUTRAL.
+        - We used the "75% agreement" file: 3,453 sentences
+          (neutral 2,146 | positive 887 | negative 420).
+        - This is the "answer key" that teaches the sentiment model what good
+          and bad financial language looks like.
+
+   4. APPLICATION DATA — MySQL database
+        - Stores users (with hashed passwords), virtual balance, portfolio
+          holdings, transactions, favourites, and an auto-buy audit log.
+
+   FEATURE ENGINEERING (turning raw prices into useful signals)
+        Raw prices alone are noisy. We compute 12 "features" that describe the
+        shape of the recent trend (full list in Part 2). We then STANDARDISE
+        them with a z-score so no feature dominates just because of its size:
+              x' = (x - mean) / standard_deviation
+        After this every feature is on the same scale (mean 0, spread 1).
+
+(C) MATHEMATICS OF THE DATA STEP
+    - Daily return:           r_t = (P_t / P_{t-1}) - 1
+    - n-day momentum:         mom = (P_t / P_{t-n}) - 1
+    - Volatility (risk):      sigma = std(daily returns over 63 days) * sqrt(252)
+                              (sqrt(252) "annualises" daily volatility because
+                               there are ~252 trading days in a year)
+    - Z-score scaling:        x' = (x - mu) / sigma     (per feature)
+
+(D) HOW / WHY / WHERE / USEFUL
+    HOW : APIs are called in Python; data is cleaned with pandas; features are
+          computed with rolling windows.
+    WHY : Free, reliable, and good enough for an educational project. Adjusted
+          prices avoid fake "jumps" on split days. Standardising features makes
+          training stable.
+    WHERE: Prices feed the outlook model + optimiser; news feeds sentiment; the
+           PhraseBank trains sentiment; MySQL runs the live app.
+    USEFUL: Clean, well-engineered data is THE reason the models behave sensibly
+            instead of chasing noise.
+
+(E)the data fetched from the finhub api
+Key	Value	Meaning
+c	310.6	Current Price: The real-time price of the stock right now.
+d	-0.25	Change: The absolute price change today (Current Price minus Previous Close). In this case, the stock is down 25 cents.
+dp	-0.0804	Percent Change: The percentage the stock has moved today. Here, it is down about 0.08%.
+h	310.94	High: The highest price the stock has reached so far today.
+l	309.6	Low: The lowest price the stock has reached so far today.
+o	310.69	Open: The price the stock started at when the market opened this morning.
+pc	310.85	Previous Close: The price the stock closed at on the previous trading day.
+t	1779975808	Timestamp: The exact time this data was generated, formatted as a Unix epoch timestamp (the number of seconds that have passed since January 1, 1970).
+
+(F) VIVA Q&A
+    Q: Why adjusted close, not raw close?
+    A: Splits/dividends create artificial price jumps; adjusted close removes
+       them so the history is consistent.
+    Q: Why standardise features?
+    A: Features have different units/scales (a % momentum vs a volatility).
+       Z-scoring puts them on equal footing so the model weighs them fairly and
+       trains faster.
+    Q: Isn't free data a limitation?
+    A: Yes — it has rate limits and ~1 year of news history. We acknowledge this
+       honestly; it is a constraint, not a hidden flaw.
+
+
+================================================================================
+PART 2 — THE MAIN MODEL: 3-MONTH PRICE OUTLOOK (Logistic Regression)
+================================================================================
+
+(A) SIMPLE IDEA
+    We do NOT try to predict tomorrow's exact price — that is ~99% random noise.
+    Instead we ask a question that actually has an answer:
+        "Is this stock likely to be HIGHER about 3 months (~63 trading days)
+         from now — yes or no?"
+    Analogy: you can't predict the next wave, but you can read the tide.
+
+(B) THE DATA / HOW IT WORKS
+    INPUT (the 12 features):
+        Momentum:  mom_1m, mom_3m, mom_6m, mom_12m   (returns over 1/3/6/12 mo)
+        Trend:     above_200d, above_50d             (price vs its 200/50-day avg)
+        Risk:      volatility, drawdown_52w          (bumpiness, fall from 1-yr high)
+        Extra:     rsi_14 (overbought/oversold), mom_accel (is momentum speeding
+                   up?), ma_slope_50 (trend direction), vol_trend (volume vs avg)
+
+    LABEL (the correct answer we learn from):
+        future_up = 1 if Price(t + 63 days) > Price(t), else 0
+
+    MODEL: Logistic Regression (a clean, interpretable classifier).
+
+(C) THE MATHEMATICS (beginner -> advanced)
+
+    STEP 1 — The linear score:
+        z = w1*x1 + w2*x2 + ... + w12*x12 + b   =   w·x + b
+        Each weight w_i says how strongly feature i pushes the outlook up/down.
+
+    STEP 2 — Turn the score into a probability with the SIGMOID:
+        P(up | x) = sigma(z) = 1 / (1 + e^(-z))
+        - sigma squashes any number into the range (0, 1) -> a probability.
+        - If P >= 0.5 we call it "likely UP", else "likely DOWN".
+
+    STEP 3 — Interpretation (why logistic regression is loved):
+        The model is linear in the LOG-ODDS:
+            log( P / (1-P) ) = w·x + b
+        So a weight tells you exactly how each signal changes the odds. Fully
+        explainable — we can literally read which signals are bullish/bearish.
+
+    STEP 4 — How it learns (the cost / objective function):
+        We fit the weights by minimising the LOG-LOSS (cross-entropy):
+            J(w) = -(1/n) * SUM_i [ y_i*log(p_i) + (1 - y_i)*log(1 - p_i) ]
+        - y_i is the true 0/1 answer, p_i is the model's predicted probability.
+        - Log-loss punishes confident wrong answers heavily, so the model is
+          pushed toward HONEST probabilities.
+        - We add light L2 regularisation (parameter C = 0.3): it gently shrinks
+          the weights to stop the model "memorising" noise (over-fitting).
+            J_reg(w) = J(w) + (1/(2C)) * ||w||^2
+
+    STEP 5 — How we TEST it honestly (this is the heart of the project):
+        - BASE RATE: these stocks rose in ~70% of all 3-month windows. A lazy
+          model that always says "UP" is already ~70% accurate for free.
+        - SKILL above baseline = (model accuracy) - (always-pick-majority rate).
+          Skill near 0 = no real edge; skill > 0 = genuine timing ability.
+        - WALK-FORWARD VALIDATION: instead of one lucky train/test split, we
+          retrain on an expanding past window and test on the next future chunk,
+          5 times, then average. This is the gold standard for time-series.
+        - EMBARGO GAP: between train and test we leave a 63-day gap so that
+          overlapping 3-month windows cannot "leak" future info into training.
+        - AUC (Area Under ROC Curve): measures RANKING quality of probabilities.
+          0.5 = no signal; > 0.5 = when the model is more confident, it really
+          is more often right. AUC survives the high base rate, so it is a
+          fairer measure than 0.5-threshold accuracy.
+        - BRIER score: mean squared error of the probabilities (0 = perfect,
+          0.25 = coin flip) -> checks if the confidence % is honest.
+
+    STEP 6 — Acting on it (risk-adjusted back-test):
+        We only "invest" in the back-test when P >= 0.55, then compare against
+        simple buy-and-hold using:
+            Sharpe ratio   = mean(returns) / std(returns) * sqrt(blocks_per_year)
+                             (reward per unit of risk; blocks_per_year = 252/63 = 4)
+            Max drawdown   = worst peak-to-trough fall of the equity curve
+        A model that side-steps the worst drops can WIN on risk even if it does
+        not win on raw total return.
+
+(D) HOW / WHY / WHERE / USEFUL
+    HOW : sklearn LogisticRegression on standardised features; evaluated with
+          walk-forward + AUC + Brier + a risk-adjusted back-test.
+    WHY : Direction over months is a real, answerable question; logistic
+          regression is interpretable and honest (it outputs true probabilities).
+          We REMOVED an earlier mistake (class_weight="balanced") that forced
+          the model to over-predict "down" and dropped it below the base rate.
+    WHERE: Powers the dashboard's "3-Month Outlook" panel and feeds the Auto-Buy
+           optimiser with expected returns + a trust signal.
+    USEFUL: It tells the user the probability of a rise AND, honestly, how much
+            to trust it (skill/AUC). It refuses to pretend it can time the market
+            when it cannot.
+
+    HONEST RESULT (measured, not assumed):
+        - Walk-forward directional SKILL averaged about -5% to -6% across all
+          stocks and windows -> beating the ~70% base rate on direction is close
+          to the efficient-market limit. We report this truthfully.
+        - But AUC (ranking) is genuinely > 0.5, and TSLA reaches ~0.71-0.73 -> a
+          real, repeatable edge for that name.
+        - "Trustworthy" flag = TRUE only if walk-forward AUC >= 0.55 OR it won on
+          total/risk-adjusted return. So the app marks TSLA trustworthy and is
+          honest that AAPL/MSFT/AMZN/NVDA have no robust directional edge.
+
+(E) VIVA Q&A
+    Q: Why logistic regression and not LSTM / deep learning?
+    A: We tested rigorously (walk-forward). With only ~40-60 INDEPENDENT 3-month
+       outcomes per stock, deep nets overfit and did NOT beat a simple model
+       out-of-sample. Logistic regression is interpretable, honest, and just as
+       good here. The limit is the market's efficiency, not the model.
+    Q: Why predict 3 months, not tomorrow?
+    A: Daily moves are almost pure noise (R^2 ~ 0). Over months, momentum/trend
+       carry measurable signal — a question that can actually be answered.
+    Q: Your skill is ~0. Isn't the model useless?
+    A: For DIRECTION at a 0.5 cut-off, the high base rate caps skill — that's an
+       efficient-market fact. The real value is in AUC (ranking) and risk-adjusted
+       timing. Reporting this honestly is the project's whole point.
+    Q: What is the sigmoid and why use it?
+    A: sigma(z)=1/(1+e^-z) maps a score to a probability in (0,1); logistic
+       regression is linear in the log-odds, which keeps it interpretable.
+    Q: How do you prevent data leakage?
+    A: Chronological split + a 63-day embargo gap so 3-month label windows in
+       train and test never overlap.
+
+
+================================================================================
+PART 3 — THE NEWS SENTIMENT MODEL (our own NLP)
+================================================================================
+
+(A) SIMPLE IDEA
+    Read recent news headlines about a stock and decide the mood: POSITIVE,
+    NEGATIVE, or NEUTRAL. Then combine them into one "News Mood" score (0-100).
+    We BUILT this ourselves (not a downloaded black box), so we can explain it.
+
+(B) THE DATA / HOW IT WORKS
+    - TRAINED on the Financial PhraseBank (3,453 expert-labelled finance
+      sentences).
+    - At run time, it scores live Finnhub headlines for the selected stock.
+    - It is a HYBRID: a trained machine-learning model + a finance word-list.
+
+(C) THE MATHEMATICS (beginner -> advanced)
+
+    STEP 1 — Turn text into numbers with TF-IDF:
+        Computers can't read words, so each headline becomes a vector of numbers.
+        TF-IDF weights each word by how informative it is:
+            tf(t,d)   = how often term t appears in headline d
+            idf(t)    = log( N / df(t) )     (rare words score higher;
+                                              N = total docs, df = docs with t)
+            tfidf(t,d) = tf(t,d) * idf(t)
+        Common words ("the", "is") get low weight; meaningful words ("plunge",
+        "beats") get high weight. We use 1-word AND 2-word phrases (bigrams) so
+        "not good" is understood, not just "good".
+
+    STEP 2 — Classify with multinomial Logistic Regression:
+        For three classes (neg/neu/pos) the model computes a score per class and
+        converts them to probabilities with the SOFTMAX function:
+            P(class k | x) = e^(z_k) / SUM_j e^(z_j)
+        The class with the highest probability is the predicted sentiment.
+        We trained with class_weight = "balanced" (see WHY below).
+
+    STEP 3 — The honest metric (Macro-F1, not just accuracy):
+            Precision = TP / (TP + FP)     (of what I called positive, how much
+                                            was truly positive)
+            Recall    = TP / (TP + FN)     (of all true positives, how many I caught)
+            F1        = 2 * (P * R) / (P + R)   (their harmonic mean)
+            Macro-F1  = average of F1 over the 3 classes (each class counts equally)
+        RESULT on unseen data: Accuracy = 85.2%, Macro-F1 = 0.806
+        (comparable to FinBERT, a heavy deep model — but ours is tiny & explainable).
+
+    STEP 4 — The HYBRID lexicon assist (the clever, honest part):
+        The training data is formal "report" sentences, so terse headline words
+        like "plunge", "fraud", "beats", "record" sometimes slip past the ML
+        model and it lazily says "neutral". So we add a finance word-list:
+            bullish words: beats, surge, soars, record, upgrade, rally, ...
+            bearish words: plunge, fraud, recall, lawsuit, downgrade, slump, ...
+        DECISION RULE:
+            if ML is CONFIDENT (max prob >= 0.60) and not neutral -> trust ML
+            else if the lexicon clearly leans bull/bear -> use the lexicon
+            else -> neutral
+        NEGATION GUARD: we skip a keyword if a negator precedes it, so
+        "No fraud found" is correctly NOT marked negative.
+
+    STEP 5 — Aggregate to a 0-100 "News Mood":
+            net  = (positive_count - negative_count) / total_articles   (in [-1, 1])
+            mood = 50 + 50 * net      (50 = balanced, 100 = all good, 0 = all bad)
+
+(D) HOW / WHY / WHERE / USEFUL
+    HOW : TF-IDF + multinomial logistic regression (scikit-learn) trained on
+          PhraseBank, wrapped with a transparent finance lexicon + negation guard.
+    WHY : Building our own model = genuinely our work, explainable, and tiny
+          (no GPU). We used class_weight="balanced" because the data is 62%
+          neutral; without it the model would just shout "neutral" and miss the
+          market-moving good/bad news (the OPPOSITE choice to the price model,
+          and we can explain exactly why).
+    WHERE: The dashboard's "Latest News & Market Mood" panel — a short-term lens
+           shown SEPARATELY from the long-term 3-month outlook (never blended).
+    USEFUL: Gives the user a quick, explainable read of the news climate, and
+            each headline shows WHY it was tagged (which keywords fired).
+
+(E) VIVA Q&A
+    Q: What is TF-IDF in one line?
+    A: A way to turn text into numbers that weights words by how informative they
+       are (rare, meaningful words score higher).
+    Q: Why macro-F1 instead of accuracy?
+    A: The data is 62% neutral; accuracy would reward a lazy "always neutral"
+       model. Macro-F1 weighs all three classes equally, so it measures real
+       skill at catching positive/negative news.
+    Q: Why a hybrid (ML + word list)?
+    A: The ML model, trained on formal text, defaults to "neutral" on punchy
+       headline words. The lexicon is a transparent safety-net that fixes those
+       cases; it only assists when the ML model is unsure, so it can't run wild.
+    Q: Why did you use class balancing here but REMOVE it in the price model?
+    A: Different goals. Here we must DETECT the rare good/bad classes, so
+       balancing helps. In the price model we wanted to MATCH the high "up" base
+       rate, so balancing HURT and we removed it. Same tool, opposite needs.
+
+
+================================================================================
+PART 4 — THE AUTO-BUY MODEL (Markowitz Portfolio Optimisation)
+================================================================================
+
+(A) SIMPLE IDEA
+    From the stocks a user marked as FAVOURITES, automatically suggest the BEST
+    COMBINATION to buy and HOW MANY shares of each, then let the user APPROVE
+    before any (simulated) money moves.
+    Key insight: don't judge stocks one-by-one — judge how they work TOGETHER.
+    Analogy: don't put all eggs in one basket; some stocks zig when others zag.
+
+(B) THE DATA / HOW IT WORKS
+    Inputs per favourite (from the outlook model): expected 3-month return,
+    confidence, price, risk level, and the "trustworthy" signal.
+    Plus: a COVARIANCE matrix from ~2 years of daily returns (how the stocks
+    move together). Plus the user's cash balance.
+
+(C) THE MATHEMATICS — MODERN PORTFOLIO THEORY (Markowitz, Nobel Prize 1990)
+
+    Let w = (w1, ..., wn) be the fraction of money in each stock (the "weights").
+    Let mu = vector of expected returns, Sigma = covariance matrix of returns.
+
+    PORTFOLIO EXPECTED RETURN:     E[Rp] = w·mu  = SUM_i w_i * mu_i
+    PORTFOLIO VARIANCE (risk^2):   Var   = wᵀ Sigma w
+                                         = SUM_i SUM_j w_i w_j Sigma_ij
+        - The off-diagonal Sigma_ij terms capture co-movement. If two stocks
+          move together (high covariance), holding both adds little
+          diversification; if one zigs while the other zags, risk falls. THIS is
+          the "combination intelligence" a per-stock scorer can't see.
+    PORTFOLIO RISK:                sigma_p = sqrt(wᵀ Sigma w)
+
+    THE OBJECTIVE — maximise the SHARPE RATIO (reward per unit of risk):
+        maximise   S(w) = (w·mu) / sqrt(wᵀ Sigma w)
+        subject to:
+            SUM_i w_i = 1        (use all the deployable money)
+            0 <= w_i <= 0.35     (long-only, and a 35% cap to force diversification)
+
+    HOW WE SOLVE IT (our own code, no library):
+        We minimise the NEGATIVE Sharpe using SciPy's SLSQP
+        (Sequential Least-SQuares Programming) — a constrained optimiser. It
+        searches weight combinations that satisfy the rules and finds the best.
+
+    ROBUSTNESS (because Markowitz is sensitive to noisy inputs):
+        - We CAP each expected return at 25% and SHRINK estimates toward their
+          average (James-Stein style) so one over-optimistic number can't
+          dominate.
+        - TRUST TILT: we multiply each stock's conviction by a factor based on
+          its walk-forward AUC (untrusted ~0.5x, strongly-trusted up to ~1.2x).
+          This favours stocks the model genuinely reads well (e.g., TSLA) while
+          still allowing others in for diversification. NOTE: the tilt steers the
+          optimiser only; the expected return we SHOW the user stays honest.
+
+    FROM WEIGHTS TO WHOLE SHARES:
+        deployable_cash = balance * 0.5      (never go all-in at once)
+        cash_i  = w_i * deployable_cash
+        shares_i = floor( cash_i / price_i ) (you can't buy fractional shares)
+        Leftover cash is given to the highest-conviction affordable stock.
+
+    GATES (only sensible candidates enter): expected return >= 2% AND
+    confidence >= 55%, else the stock is excluded WITH a reason shown to the user.
+
+(D) HOW / WHY / WHERE / USEFUL
+    HOW : gather favourites -> predict -> build covariance from history ->
+          max-Sharpe optimise with constraints + trust tilt -> round to whole
+          shares -> show for APPROVAL -> execute against the virtual wallet.
+    WHY : It is exactly how real robo-advisors allocate money; it captures
+          diversification that a one-stock-at-a-time scorer cannot; and the
+          approve-before-buy step keeps a human in control.
+    WHERE: The "Smart Auto-Buy" panel; reuses the existing buy + audit-log path.
+    USEFUL: Turns predictions into an actionable, diversified, risk-aware plan
+            with quantities — and explains which stocks were left out and why.
+
+    EXAMPLE (a $10,000 portfolio from 6 favourites):
+        AMZN 32.9% | AAPL 31.8% | NVDA 17.7% | TSLA 17.5% [TRUSTED]
+        Expected ~3-month return ~ +9.3% (~$450), risk ~14.9%, Sharpe ~0.62.
+        Excluded: MSFT (confidence 51% < 55%), GOOGL (estimate -2%, negative).
+
+(E) VIVA Q&A
+    Q: What is the covariance matrix doing?
+    A: It encodes how every pair of stocks moves together, so the optimiser can
+       prefer combinations that diversify risk instead of doubling down on
+       stocks that rise and fall as one.
+    Q: What does maximising the Sharpe ratio mean?
+    A: Getting the most expected return for each unit of risk taken — the best
+       risk-adjusted mix, not just the highest-return mix.
+    Q: Markowitz is famously sensitive to inputs — how did you handle that?
+    A: We cap and shrink expected returns, cap each weight at 35%, only feed
+       trustworthy-ish candidates, and tilt toward stocks with real signal.
+    Q: Why approval instead of auto-executing?
+    A: Honesty and safety. The predictions are not guarantees, so the human
+       approves every trade; there is also a deploy cap and an audit log.
+    Q: Why convert weights to whole shares with a leftover pass?
+    A: Real trades are integer shares within a budget; the leftover pass spends
+       remaining cash on the highest-conviction stock you can still afford.
+
+
+================================================================================
+PART 5 — UNIQUENESS, OVERALL RESULT, HONESTY & ACCURACY
+================================================================================
+
+(A) HOW IT IS DIFFERENT FROM EXISTING SOLUTIONS
+    Typical student/online "stock predictor" projects:
+        - Claim to predict exact prices ("95% accurate!") — usually measured
+          wrongly (on training data, or with leakage), so the number is fake.
+        - One model, one stock at a time, no risk view, no honest testing.
+    Hawk Sight is different on four counts:
+        1. HONEST EVALUATION: walk-forward + AUC + base-rate awareness. We prove
+           what the model can and cannot do, instead of over-claiming.
+        2. THREE OWN MODELS working together: a 3-month outlook, an in-house NLP
+           sentiment model, and a from-scratch Markowitz optimiser.
+        3. PORTFOLIO-LEVEL ACTION: it doesn't just say "AAPL up" — it builds the
+           best diversified COMBINATION with quantities, then asks for approval.
+        4. FULL PRODUCT: login, live prices (WebSockets), news, manual trading,
+           auto-buy, virtual wallet — an end-to-end app, not a notebook.
+    (We do NOT claim "world first" — robo-advisors exist. We claim a genuinely
+     integrated, honestly-evaluated build done from scratch.)
+
+(B) OVERALL RESULT (measured on unseen data)
+    - 3-Month Outlook: directional skill ~0 above the ~70% base rate (the
+      efficient-market ceiling), BUT real ranking signal — AUC > 0.5 overall and
+      ~0.71-0.73 for TSLA. Value lives in ranking + risk-adjusted timing.
+    - News Sentiment: 85.2% accuracy, 0.806 macro-F1 on held-out data; the
+      hybrid fixes the headline cases the pure ML model missed.
+    - Auto-Buy: produces sensible, diversified, risk-aware baskets with
+      quantities; example Sharpe ~0.62, with honest exclusions.
+
+(C) WHY THIS HONESTY IS A STRENGTH (not a weakness)
+    Saying "the model cannot beat the market on direction, and here is the proof"
+    shows scientific maturity. Markets are largely EFFICIENT — if 3-month moves
+    were easy to predict, hedge funds would have already traded the pattern away.
+    A tool that tells the truth about its own limits is more trustworthy and more
+    useful than one that lies. THIS is the project's unique selling point.
+
+(D) HOW / WHY / WHERE / USEFUL (the whole system)
+    HOW : data -> features/text -> three models -> dashboard -> approve -> trade.
+    WHY : to give retail users institutional-style analysis with HONEST
+          confidence, removing emotional bias while keeping them in control.
+    WHERE: an educational paper-trading platform (with optional Alpaca paper API).
+    USEFUL: teaches sound, risk-aware, evidence-based investing — and is a strong
+            demonstration of full-stack + ML + quantitative-finance skills.
+
+(E) VIVA Q&A (whole-project)
+    Q: In one sentence, what did you build?
+    A: An honest, full-stack stock assistant that estimates a 3-month outlook,
+       reads news sentiment with our own NLP model, and recommends a risk-
+       optimised portfolio you approve before it paper-trades.
+    Q: What is the single most important contribution?
+    A: Honesty backed by measurement — we prove, with walk-forward validation,
+       exactly where the models have an edge (ranking/risk-adjusted) and where
+       they do not (raw direction).
+    Q: If accuracy is capped, why is the project valuable?
+    A: Because investing value is risk-adjusted, not coin-flip direction. The
+       outlook ranks opportunities, sentiment adds a news lens, and the optimiser
+       turns it into a diversified, approved plan — a complete, honest workflow.
+    Q: What would you add next?
+    A: A FinBERT sentiment upgrade (benchmarked honestly), reinforcement-learning
+       allocation, live brokerage with safeguards, and multi-period optimisation.
+
+================================================================================
+                 END — built and explained with honesty first.
+================================================================================
