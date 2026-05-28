@@ -1,0 +1,17 @@
+{
+  "method": "TF-IDF (1-2 grams) + LogisticRegression(class_weight=balanced)",
+  "dataset": "Financial PhraseBank \u2014 Sentences_75Agree",
+  "n_samples": 3453,
+  "label_mix": {
+    "negative": 420,
+    "neutral": 2146,
+    "positive": 887
+  },
+  "test_accuracy": 0.8523878437047757,
+  "test_macro_f1": 0.8060308923891325,
+  "classes": [
+    "negative",
+    "neutral",
+    "positive"
+  ]
+}

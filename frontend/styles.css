@@ -1,0 +1,189 @@
+/* ============================================
+   HAWK SIGHT AI - CUSTOM STYLES
+   Keeps original dark theme + adds new elements
+   ============================================ */
+
+/* --- BASE THEME (UNCHANGED FROM ORIGINAL) --- */
+body {
+    background-color: #0D1117;
+    color: #C9D1D9;
+}
+
+.glass-effect {
+    background: linear-gradient(145deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.9));
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(56, 189, 248, 0.15);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.primary-gradient-text {
+    background: linear-gradient(90deg, #38BDF8, #818CF8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #0D1117; }
+::-webkit-scrollbar-thumb { background: #30363d; border-radius: 10px; }
+
+/* --- AUTH FORM ANIMATIONS (Replaced by Tailwind classes) --- */
+
+/* --- PRICE FLASH ANIMATIONS (UNCHANGED) --- */
+@keyframes flashGreen {
+    0% { color: #4ade80; text-shadow: 0 0 10px rgba(74, 222, 128, 0.5); }
+    100% { color: inherit; }
+}
+@keyframes flashRed {
+    0% { color: #f87171; text-shadow: 0 0 10px rgba(248, 113, 113, 0.5); }
+    100% { color: inherit; }
+}
+.price-up { animation: flashGreen 1s ease-out; }
+.price-down { animation: flashRed 1s ease-out; }
+
+/* --- TRANSITIONS (UNCHANGED) --- */
+#prediction-panel { transition: opacity 0.3s ease-in-out; }
+tr { transition: background-color 0.2s ease; }
+
+/* ============================================
+   NEW STYLES FOR INDUSTRY-GRADE FEATURES
+   ============================================ */
+
+/* --- FAVORITE STAR BUTTON --- */
+.fav-star {
+    cursor: pointer;
+    color: #4b5563;
+    transition: all 0.2s ease;
+    font-size: 1rem;
+}
+.fav-star:hover { color: #fbbf24; transform: scale(1.2); }
+.fav-star.active { color: #fbbf24; text-shadow: 0 0 8px rgba(251, 191, 36, 0.4); }
+
+/* --- CONFIDENCE METER --- */
+.confidence-bar {
+    width: 100%;
+    height: 6px;
+    background: #1f2937;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 4px;
+}
+.confidence-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ef4444 0%, #f59e0b 50%, #10b981 100%);
+    transition: width 0.6s ease-out;
+    border-radius: 3px;
+}
+
+/* --- DIRECTION BADGES (UP / DOWN) --- */
+.direction-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+}
+.direction-badge.up {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+.direction-badge.down {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.direction-badge.neutral {
+    background: rgba(156, 163, 175, 0.15);
+    color: #9ca3af;
+    border: 1px solid rgba(156, 163, 175, 0.3);
+}
+
+/* --- AUTO-BUY RECOMMENDATION CARDS --- */
+.rec-card {
+    background: linear-gradient(135deg, rgba(22, 27, 34, 0.9), rgba(13, 17, 23, 0.9));
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 1rem;
+    transition: all 0.25s ease;
+    cursor: pointer;
+}
+.rec-card:hover {
+    border-color: #38BDF8;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(56, 189, 248, 0.15);
+}
+.rec-card.skipped { opacity: 0.55; }
+.rec-card.avoid {
+    border-color: rgba(239, 68, 68, 0.4);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), rgba(13, 17, 23, 0.9));
+}
+
+/* --- LOADING SPINNER --- */
+.spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-top-color: #38BDF8;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* --- KILL SWITCH (AUTO-BUY EMERGENCY STOP) --- */
+.kill-switch {
+    background: linear-gradient(135deg, #7f1d1d, #991b1b);
+    border: 2px solid #ef4444;
+    color: white;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+    transition: all 0.2s ease;
+}
+.kill-switch:hover {
+    background: linear-gradient(135deg, #991b1b, #b91c1c);
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.6);
+    transform: scale(1.02);
+}
+
+/* --- AUTO-BUY TOGGLE --- */
+.toggle-switch {
+    position: relative;
+    width: 50px;
+    height: 26px;
+    background: #374151;
+    border-radius: 13px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+.toggle-switch.on { background: #10b981; }
+.toggle-switch::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.3s;
+}
+.toggle-switch.on::after { transform: translateX(24px); }
+
+/* --- METRIC TAGS (low / medium / high) --- */
+.metric-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.metric-tag.low { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+.metric-tag.medium { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+.metric-tag.high { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
