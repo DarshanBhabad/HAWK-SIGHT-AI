@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI/ML Auto-Trading Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0D1117; color: #C9D1D9; }
+        .glass-effect { background: rgba(22, 27, 34, 0.7); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(48, 54, 61, 0.5); }
+        .primary-gradient-text { background: linear-gradient(90deg, #38BDF8, #A78BFA); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .btn-glow { box-shadow: 0 0 15px rgba(56, 189, 248, 0.4); }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #161b22; }
+        ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #484f58; }
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]:focus { outline: none; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #38bdf8; border-radius: 5px; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: #a78bfa; cursor: pointer; margin-top: -8px; border: 2px solid #0d1117; }
+        
+        /* Animation Styles */
+        .fade-in { animation: fadeIn 0.5s ease-in-out forwards; }
+        .fade-out { animation: fadeOut 0.5s ease-in-out forwards; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(-10px); }
+        }
+
+        /* Form transition styles */
+        .form-wrapper { position: relative; height: 380px; /* Adjusted for content */ }
+        .form-container {
+            position: absolute;
+            width: 100%;
+            transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out;
+        }
+        .form-container.active {
+            opacity: 1;
+            transform: translateX(0);
+            z-index: 10;
+        }
+       .form-container:not(.active) {
+            opacity: 0;
+            transform: translateX(20px);
+            pointer-events: none;
+        }
+        #login-form-container:not(.active) {
+             transform: translateX(-20px);
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Auth Page: Contains both Login and Signup -->
+    <div id="auth-page" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0D1117] to-[#161B22] p-4">
+        <div class="w-full max-w-md">
+            <div class="text-center mb-6">
+                 <h1 class="text-3xl md:text-4xl font-bold primary-gradient-text">AI Auto-Trading Platform</h1>
+                <p class="text-gray-400 mt-2">As presented by Mandar, Darshan, Nikhil & Atharav</p>
+            </div>
+            <div class="glass-effect p-8 rounded-2xl shadow-2xl">
+                <div class="flex border-b border-gray-700 mb-6">
+                    <button id="show-login-btn" class="flex-1 py-2 text-sm font-medium border-b-2 border-sky-500 text-white transition-all">Login</button>
+                    <button id="show-signup-btn" class="flex-1 py-2 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-white transition-all">Sign Up</button>
+                </div>
+                <div class="form-wrapper">
+                    <div id="login-form-container" class="form-container active"><form id="login-form"><div id="login-error" class="text-red-400 text-sm mb-4 hidden"></div><div class="mb-4"><label for="login-email" class="block mb-2 text-sm font-medium text-gray-300">Email</label><input type="email" id="login-email" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-sky-500 focus:border-sky-500 block w-full p-2.5" required></div><div class="mb-6"><label for="login-password" class="block mb-2 text-sm font-medium text-gray-300">Password</label><input type="password" id="login-password" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-sky-500 focus:border-sky-500 block w-full p-2.5" required></div><button type="submit" class="w-full text-white bg-sky-600 hover:bg-sky-700 focus:ring-4 focus:outline-none focus:ring-sky-800 font-medium rounded-lg text-sm px-5 py-3 text-center transition duration-300 btn-glow">Login</button></form></div>
+                    <div id="signup-form-container" class="form-container"><form id="signup-form"><div id="signup-success" class="text-green-400 text-sm mb-4 hidden"></div><div class="mb-4"><label for="signup-name" class="block mb-2 text-sm font-medium text-gray-300">Full Name</label><input type="text" id="signup-name" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-sky-500 focus:border-sky-500 block w-full p-2.5" required></div><div class="mb-4"><label for="signup-email" class="block mb-2 text-sm font-medium text-gray-300">Email</label><input type="email" id="signup-email" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-sky-500 focus:border-sky-500 block w-full p-2.5" required></div><div class="mb-6"><label for="signup-password" class="block mb-2 text-sm font-medium text-gray-300">Password</label><input type="password" id="signup-password" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-sky-500 focus:border-sky-500 block w-full p-2.5" required></div><button type="submit" class="w-full text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:outline-none focus:ring-indigo-800 font-medium rounded-lg text-sm px-5 py-3 text-center transition duration-300">Create Account</button></form></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application Container -->
+    <div id="app-container" class="hidden">
+        <header class="sticky top-0 z-40 glass-effect">
+            <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8"><div class="flex items-center justify-between h-16"><a href="#" class="flex items-center"><svg class="w-8 h-8 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg><span class="ml-2 text-xl font-bold text-gray-100">AI</span><span class="text-xl font-bold text-sky-400">Trading</span></a><nav class="flex items-center space-x-4"><button id="nav-main" class="px-3 py-2 text-sm font-medium text-white bg-sky-600 rounded-md transition-all">Trading</button><button id="nav-dashboard" class="px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 rounded-md transition-all">Dashboard</button></nav><div class="flex items-center space-x-4"><div class="text-right"><div id="user-name-display" class="font-semibold text-white"></div><div id="user-email-display" class="text-xs text-green-400"></div></div><button id="logout-button" class="p-2 text-gray-400 hover:text-white hover:bg-red-500 rounded-full transition duration-300" title="Logout"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg></button></div></div></div>
+        </header>
+
+        <!-- Main Trading Page Content -->
+        <main id="main-page" class="p-4 sm:p-6 lg:p-8 max-w-screen-2xl mx-auto">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2">
+                    <div class="glass-effect p-6 rounded-2xl"><h2 class="text-2xl font-bold text-white mb-4">Live Market Analysis (NSE)</h2><div class="overflow-x-auto"><table class="w-full text-sm text-left text-gray-400"><thead class="text-xs text-gray-300 uppercase bg-gray-700/50"><tr><th scope="col" class="px-6 py-3">Symbol</th><th scope="col" class="px-6 py-3">Live Price</th><th scope="col" class="px-6 py-3">AI Prediction (24h)</th><th scope="col" class="px-6 py-3 hidden sm:table-cell">Sentiment</th></tr></thead><tbody id="stock-ticker-body"></tbody></table></div></div>
+                </div>
+                <div class="space-y-6">
+                    <div class="glass-effect p-6 rounded-2xl">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-bold text-white">Integrated Wallet</h3>
+                            <div id="auto-invest-status-indicator" class="px-3 py-1 text-xs font-medium rounded-full bg-gray-600 text-gray-300">AI Inactive</div>
+                        </div>
+                        <div class="flex justify-between items-center"><span class="text-gray-400">Available Balance</span><span id="wallet-balance" class="text-2xl font-bold text-green-400">₹10,00,000.00</span></div>
+                        <div class="flex space-x-2 mt-4">
+                            <button id="add-money-btn" class="w-full text-white bg-green-600 hover:bg-green-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition">Add Funds</button>
+                            <button id="manage-auto-invest-btn" class="w-full text-white bg-sky-600 hover:bg-sky-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition btn-glow">Manage Auto-Invest</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Dashboard Page Content -->
+        <div id="dashboard-page" class="hidden p-4 sm:p-6 lg:p-8 max-w-screen-2xl mx-auto">
+            <h1 class="text-3xl font-bold text-white mb-6">Performance Dashboard</h1>
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-6">
+                <div class="glass-effect p-6 rounded-2xl"><h4 class="text-gray-400 text-sm">Portfolio Value</h4><p id="dashboard-portfolio-value" class="text-3xl font-bold text-green-400">₹0.00</p></div>
+                <div class="glass-effect p-6 rounded-2xl"><h4 class="text-gray-400 text-sm">AI Prediction Accuracy</h4><p class="text-3xl font-bold text-white">>90%</p></div>
+                <div class="glass-effect p-6 rounded-2xl"><h4 class="text-gray-400 text-sm">AI Trades Today</h4><p id="dashboard-ai-trades" class="text-3xl font-bold text-white">0</p></div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                 <div class="lg:col-span-2 glass-effect p-6 rounded-2xl"><h3 class="text-xl font-bold text-white mb-4">Portfolio Allocation</h3><div id="portfolio-allocation-container" class="space-y-4"><p class="text-gray-400 text-sm">No assets held. Activate Auto-Invest to start.</p></div></div>
+                 <div class="lg:col-span-3 glass-effect p-6 rounded-2xl"><h3 class="text-xl font-bold text-white mb-4">Recent Activity</h3><ul id="recent-activity-list" class="divide-y divide-gray-700"><li class="py-3 text-gray-500 text-sm">No recent activity.</li></ul></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="add-money-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/70 p-4"><div class="glass-effect p-8 rounded-2xl shadow-2xl w-full max-w-sm"><h2 class="text-2xl font-bold text-white mb-4">Add Funds to Wallet</h2><form id="add-money-form"><label for="amount" class="block mb-2 text-sm font-medium text-gray-300">Amount (INR)</label><input type="number" id="amount" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg block w-full p-2.5 mb-4" placeholder="e.g., 50000" required min="1"><div class="flex justify-end space-x-4"><button type="button" id="cancel-add-money" class="px-5 py-2.5 text-sm font-medium text-gray-400 bg-gray-700 hover:bg-gray-600 rounded-lg">Cancel</button><button type="submit" class="text-white bg-green-600 hover:bg-green-700 font-medium rounded-lg text-sm px-5 py-2.5">Confirm</button></div></form></div></div>
+    
+    <div id="auto-invest-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/70 p-4">
+        <div class="glass-effect p-8 rounded-2xl shadow-2xl w-full max-w-md">
+            <h2 class="text-2xl font-bold text-white mb-6">Auto-Invest AI Settings</h2>
+            <div class="space-y-6">
+                <div>
+                    <h3 class="text-lg font-bold text-white mb-2">Risk Factor</h3>
+                    <div id="modal-risk-buttons" class="grid grid-cols-3 gap-2">
+                        <button data-risk="low" class="risk-btn bg-gray-700 text-white py-2 rounded-lg text-sm font-medium transition">Low</button>
+                        <button data-risk="medium" class="risk-btn bg-sky-600 text-white py-2 rounded-lg text-sm font-medium transition">Medium</button>
+                        <button data-risk="high" class="risk-btn bg-gray-700 text-white py-2 rounded-lg text-sm font-medium transition">High</button>
+                    </div>
+                </div>
+                 <div>
+                    <h3 class="text-lg font-bold text-white mb-2">Total Investment Allocation</h3>
+                    <div class="flex items-center space-x-4">
+                        <input id="modal-allocation-slider" type="range" min="1" max="100" value="50" class="w-full">
+                        <span id="modal-allocation-value" class="font-bold text-sky-400 text-lg w-12 text-center">50%</span>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between">
+                     <h3 class="text-lg font-bold text-white">Enable Auto-Sell (Stop Loss)</h3>
+                     <label for="auto-sell-toggle" class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" value="" id="auto-sell-toggle" class="sr-only peer" checked>
+                        <div class="w-11 h-6 bg-gray-600 rounded-full peer peer-focus:ring-4 peer-focus:ring-sky-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-600"></div>
+                     </label>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-white mb-2">Max Loss Threshold Per Stock</h3>
+                    <div class="flex items-center space-x-4">
+                        <input id="modal-loss-slider" type="range" min="1" max="50" value="10" class="w-full">
+                        <span id="modal-loss-value" class="font-bold text-sky-400 text-lg w-12 text-center">10%</span>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-8 flex flex-col space-y-2">
+                <button id="toggle-auto-invest-btn" class="w-full text-white bg-green-600 hover:bg-green-700 font-medium rounded-lg text-sm px-5 py-3 text-center transition">Activate Auto-Invest</button>
+                <button id="close-auto-invest-modal" class="w-full text-gray-300 bg-gray-700 hover:bg-gray-600 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- PAGE & VIEW ELEMENTS ---
+        const authPage = document.getElementById('auth-page'), appContainer = document.getElementById('app-container');
+        const mainPage = document.getElementById('main-page'), dashboardPage = document.getElementById('dashboard-page');
+        const navMain = document.getElementById('nav-main'), navDashboard = document.getElementById('nav-dashboard');
+
+        // --- AUTH ELEMENTS ---
+        const showLoginBtn = document.getElementById('show-login-btn'), showSignupBtn = document.getElementById('show-signup-btn');
+        const loginFormContainer = document.getElementById('login-form-container'), signupFormContainer = document.getElementById('signup-form-container');
+        const loginForm = document.getElementById('login-form'), signupForm = document.getElementById('signup-form');
+        const loginError = document.getElementById('login-error'), signupSuccess = document.getElementById('signup-success');
+        const logoutButton = document.getElementById('logout-button');
+        const userNameDisplay = document.getElementById('user-name-display'), userEmailDisplay = document.getElementById('user-email-display');
+        
+        // --- MAIN APP ELEMENTS ---
+        const addMoneyBtn = document.getElementById('add-money-btn'), manageAutoInvestBtn = document.getElementById('manage-auto-invest-btn');
+        const addMoneyModal = document.getElementById('add-money-modal'), autoInvestModal = document.getElementById('auto-invest-modal');
+        const addMoneyForm = document.getElementById('add-money-form'), cancelAddMoneyBtn = document.getElementById('cancel-add-money');
+        const walletBalanceEl = document.getElementById('wallet-balance'), autoInvestStatusIndicator = document.getElementById('auto-invest-status-indicator');
+
+        // --- AUTO-INVEST MODAL ELEMENTS ---
+        const modalRiskButtons = document.getElementById('modal-risk-buttons'), modalLossSlider = document.getElementById('modal-loss-slider');
+        const modalLossValue = document.getElementById('modal-loss-value'), toggleAutoInvestBtn = document.getElementById('toggle-auto-invest-btn');
+        const closeAutoInvestModalBtn = document.getElementById('close-auto-invest-modal'), autoSellToggle = document.getElementById('auto-sell-toggle');
+        const modalAllocationSlider = document.getElementById('modal-allocation-slider'), modalAllocationValue = document.getElementById('modal-allocation-value');
+        
+        // --- DASHBOARD ELEMENTS ---
+        const portfolioValueEl = document.getElementById('dashboard-portfolio-value');
+        const aiTradesEl = document.getElementById('dashboard-ai-trades'), portfolioAllocationContainer = document.getElementById('portfolio-allocation-container');
+        const recentActivityList = document.getElementById('recent-activity-list');
+
+        // --- STATE & STORAGE ---
+        const USERS_DB_KEY = 'ai_trading_users_csv';
+        let currentUser = null, currentWalletBalance = 1000000.00, portfolio = [], activityLog = [];
+        let autoInvestState = { isActive: false, risk: 'medium', lossThreshold: 10, autoSellEnabled: true, investmentAllocation: 50 };
+        let stockPriceInterval, aiDecisionInterval;
+
+        // --- MOCK DATA (INDIAN STOCKS) ---
+        let stocks = [
+            { symbol: 'RELIANCE', price: 2900.50, sentiment: 'Positive' }, { symbol: 'TCS', price: 3850.75, sentiment: 'Very Positive' },
+            { symbol: 'INFY', price: 1600.20, sentiment: 'Neutral' }, { symbol: 'HDFCBANK', price: 1550.90, sentiment: 'Slightly Positive' },
+            { symbol: 'ICICIBANK', price: 1100.45, sentiment: 'Positive' },
+        ];
+        
+        // --- ANIMATION & VIEW HELPERS ---
+        const animateSwitch = (elementToHide, elementToShow, callback) => {
+            elementToHide.classList.add('fade-out');
+            elementToHide.addEventListener('animationend', () => {
+                elementToHide.classList.add('hidden');
+                elementToHide.classList.remove('fade-out');
+                
+                elementToShow.classList.remove('hidden');
+                elementToShow.classList.add('fade-in');
+                
+                elementToShow.addEventListener('animationend', () => {
+                    elementToShow.classList.remove('fade-in');
+                    if(callback) callback();
+                }, { once: true });
+            }, { once: true });
+        };
+
+        const showPage = (page) => {
+            if (page === 'app') {
+                animateSwitch(authPage, appContainer);
+            } else {
+                animateSwitch(appContainer, authPage);
+            }
+        };
+        
+        const switchAuthForm = (form) => {
+            loginFormContainer.classList.toggle('active', form === 'login');
+            signupFormContainer.classList.toggle('active', form !== 'login');
+            showLoginBtn.classList.toggle('border-sky-500', form === 'login');
+            showLoginBtn.classList.toggle('text-white', form === 'login');
+            showLoginBtn.classList.toggle('border-transparent', form !== 'login');
+            showLoginBtn.classList.toggle('text-gray-400', form !== 'login');
+            showSignupBtn.classList.toggle('border-sky-500', form !== 'login');
+            showSignupBtn.classList.toggle('text-white', form !== 'login');
+            showSignupBtn.classList.toggle('border-transparent', form === 'login');
+            showSignupBtn.classList.toggle('text-gray-400', form === 'login');
+        };
+
+        const switchAppView = (view) => {
+            const currentView = !mainPage.classList.contains('hidden') ? mainPage : dashboardPage;
+            const nextView = view === 'main' ? mainPage : dashboardPage;
+
+            if (currentView !== nextView) {
+                animateSwitch(currentView, nextView, () => {
+                     navMain.classList.toggle('bg-sky-600', view === 'main');
+                     navMain.classList.toggle('text-gray-300', view !== 'main');
+                     navDashboard.classList.toggle('bg-sky-600', view !== 'main');
+                     navDashboard.classList.toggle('text-gray-300', view === 'main');
+                });
+            }
+        };
+
+        const getUsers = () => { const d = localStorage.getItem(USERS_DB_KEY); return d ? d.split('\n').filter(Boolean).map(r => { const [n, e, p] = r.split(','); return { name: n, email: e, password: p }; }) : []; };
+        const saveUser = (name, email, password) => { const users = getUsers(); if (users.some(u => u.email === email)) return false; const r = `${name},${email},${password}`; const e = localStorage.getItem(USERS_DB_KEY) || ''; localStorage.setItem(USERS_DB_KEY, e + r + '\n'); return true; };
+
+        // --- CORE UI & LOGIC FUNCTIONS ---
+        const formatCurrency = (amount) => `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        
+        const updateWalletBalance = () => { walletBalanceEl.textContent = formatCurrency(currentWalletBalance); };
+        
+        const renderStockTicker = () => {
+            const tickerBody = document.getElementById('stock-ticker-body');
+            tickerBody.innerHTML = stocks.map(stock => {
+                const prediction = stock.price * (1 + (Math.random() - 0.45) * 0.05);
+                const isPositive = prediction > stock.price;
+                const predColor = isPositive ? 'text-green-400' : 'text-red-400';
+                const sentimentColor = stock.sentiment.includes('Positive') ? 'text-green-400' : stock.sentiment.includes('Negative') ? 'text-red-400' : 'text-gray-400';
+                return `<tr class="border-b border-gray-700 hover:bg-gray-800/50"><td class="px-6 py-4 font-medium text-white">${stock.symbol}</td><td class="px-6 py-4 text-white">${formatCurrency(stock.price)}</td><td class="px-6 py-4 ${predColor}">${formatCurrency(prediction)}</td><td class="px-6 py-4 hidden sm:table-cell ${sentimentColor}">${stock.sentiment}</td></tr>`;
+            }).join('');
+        };
+
+        const updateStockPrices = () => { stocks.forEach(s => s.price += (Math.random() - 0.5) * (s.price / 1000)); renderStockTicker(); };
+
+        const login = (email, password) => {
+            const user = getUsers().find(u => u.email === email && u.password === password);
+            if (user) {
+                currentUser = user; userNameDisplay.textContent = currentUser.name; userEmailDisplay.textContent = currentUser.email;
+                showPage('app'); 
+                switchAppView('main');
+                clearInterval(stockPriceInterval);
+                stockPriceInterval = setInterval(() => { updateStockPrices(); checkPortfolioLosses(); }, 2000);
+                updateAllUI();
+            } else {
+                loginError.textContent = 'Invalid email or password.'; loginError.classList.remove('hidden');
+            }
+        };
+
+        const logout = () => { 
+            showPage('auth'); 
+            setTimeout(() => {
+                currentUser = null; loginForm.reset(); signupForm.reset(); loginError.classList.add('hidden'); 
+                clearInterval(stockPriceInterval); clearInterval(aiDecisionInterval);
+            }, 500); // Wait for fade out animation
+        };
+        
+        const addActivity = (message) => {
+            activityLog.unshift({ message, timestamp: new Date().toLocaleTimeString() });
+            if (activityLog.length > 10) activityLog.pop();
+            renderActivityLog();
+        };
+
+        const renderActivityLog = () => {
+            recentActivityList.innerHTML = activityLog.length ? activityLog.map(item => `<li class="py-3 flex justify-between items-center text-sm"><p>${item.message}</p><span class="text-xs text-gray-500">${item.timestamp}</span></li>`).join('') : '<li class="py-3 text-gray-500 text-sm">No recent activity.</li>';
+        };
+
+        const updateDashboard = () => {
+            const totalPortfolioValue = portfolio.reduce((sum, asset) => sum + (asset.shares * stocks.find(s => s.symbol === asset.symbol).price), 0);
+            portfolioValueEl.textContent = formatCurrency(totalPortfolioValue);
+            aiTradesEl.textContent = activityLog.filter(a => a.message.includes('AI BUY') || a.message.includes('AI SELL')).length;
+            
+            if (portfolio.length === 0) {
+                portfolioAllocationContainer.innerHTML = '<p class="text-gray-400 text-sm">No assets held. Activate Auto-Invest to start.</p>';
+            } else {
+                 portfolioAllocationContainer.innerHTML = portfolio.map(asset => {
+                    const stock = stocks.find(s => s.symbol === asset.symbol);
+                    const assetValue = asset.shares * stock.price;
+                    const percentage = totalPortfolioValue > 0 ? (assetValue / totalPortfolioValue) * 100 : 0;
+                    return `<div class="flex items-center text-sm"><div class="w-1/3 text-gray-300">${asset.symbol} (${asset.shares})</div><div class="w-2/3 bg-gray-700 rounded-full h-4"><div class="bg-sky-500 h-4 rounded-full" style="width: ${percentage}%"></div></div><div class="w-16 text-right text-white">${percentage.toFixed(0)}%</div></div>`;
+                }).join('');
+            }
+        };
+
+        const updateAllUI = () => { updateWalletBalance(); updateDashboard(); renderActivityLog(); };
+
+        const aiDecisionLogic = () => {
+            if (!autoInvestState.isActive) return;
+
+            const totalPortfolioValue = portfolio.reduce((sum, asset) => sum + (asset.shares * stocks.find(s => s.symbol === asset.symbol).price), 0);
+            const netWorth = currentWalletBalance + totalPortfolioValue;
+            const targetInvestmentValue = netWorth * (autoInvestState.investmentAllocation / 100);
+
+            if (totalPortfolioValue < targetInvestmentValue) {
+                const capitalToDeploy = targetInvestmentValue - totalPortfolioValue;
+                const investmentAmount = Math.min(currentWalletBalance, capitalToDeploy * 0.2); 
+
+                const riskThreshold = { low: 0.005, medium: 0.01, high: 0.02 }[autoInvestState.risk];
+                const stockToBuy = stocks[Math.floor(Math.random() * stocks.length)];
+                const prediction = stockToBuy.price * (1 + (Math.random() - 0.4) * 0.05);
+            
+                if ((prediction / stockToBuy.price - 1) > riskThreshold && investmentAmount > stockToBuy.price) {
+                    const shares = Math.floor(investmentAmount / stockToBuy.price);
+                    currentWalletBalance -= shares * stockToBuy.price;
+                    const existingAsset = portfolio.find(a => a.symbol === stockToBuy.symbol);
+                    if (existingAsset) { existingAsset.shares += shares; } 
+                    else { portfolio.push({ symbol: stockToBuy.symbol, shares: shares, purchasePrice: stockToBuy.price }); }
+                    addActivity(`<span class="font-bold text-green-400">AI BUY</span> ${shares} shares of ${stockToBuy.symbol} @ ${formatCurrency(stockToBuy.price)}`);
+                    updateAllUI();
+                }
+            }
+        };
+
+        const checkPortfolioLosses = () => {
+            if (!autoInvestState.isActive || !autoInvestState.autoSellEnabled) return;
+            portfolio = portfolio.filter(asset => {
+                const currentPrice = stocks.find(s => s.symbol === asset.symbol).price;
+                const lossPercentage = (asset.purchasePrice - currentPrice) / asset.purchasePrice * 100;
+                if (lossPercentage > autoInvestState.lossThreshold) {
+                    currentWalletBalance += asset.shares * currentPrice;
+                    addActivity(`<span class="font-bold text-red-400">AI SELL</span> ${asset.shares} shares of ${asset.symbol} @ ${formatCurrency(currentPrice)} (Loss Trigger)`);
+                    updateAllUI();
+                    return false;
+                }
+                return true;
+            });
+        };
+        
+        const toggleAutoInvest = (activate) => {
+            autoInvestState.isActive = activate;
+            clearInterval(aiDecisionInterval);
+            if(autoInvestState.isActive) { aiDecisionInterval = setInterval(aiDecisionLogic, 5000); }
+            
+            autoInvestStatusIndicator.textContent = autoInvestState.isActive ? 'AI Active' : 'AI Inactive';
+            autoInvestStatusIndicator.classList.toggle('bg-green-600', autoInvestState.isActive);
+            autoInvestStatusIndicator.classList.toggle('text-white', autoInvestState.isActive);
+            autoInvestStatusIndicator.classList.toggle('bg-gray-600', !autoInvestState.isActive);
+            autoInvestStatusIndicator.classList.toggle('text-gray-300', !autoInvestState.isActive);
+
+            toggleAutoInvestBtn.textContent = autoInvestState.isActive ? 'Deactivate Auto-Invest' : 'Activate Auto-Invest';
+            toggleAutoInvestBtn.classList.toggle('bg-red-600', autoInvestState.isActive);
+            toggleAutoInvestBtn.classList.toggle('hover:bg-red-700', autoInvestState.isActive);
+            toggleAutoInvestBtn.classList.toggle('bg-green-600', !autoInvestState.isActive);
+            toggleAutoInvestBtn.classList.toggle('hover:bg-green-700', !autoInvestState.isActive);
+        };
+
+        // --- EVENT LISTENERS ---
+        loginForm.addEventListener('submit', (e) => { e.preventDefault(); login(document.getElementById('login-email').value, document.getElementById('login-password').value); });
+        signupForm.addEventListener('submit', (e) => { 
+            e.preventDefault();
+            const name = document.getElementById('signup-name').value;
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            if (saveUser(name, email, password)) {
+                signupSuccess.textContent = "Account created! Please log in.";
+                signupSuccess.classList.remove('hidden');
+                signupForm.reset();
+                setTimeout(() => { switchAuthForm('login'); signupSuccess.classList.add('hidden'); }, 2000);
+            } else {
+                alert('An account with this email already exists.');
+            }
+        });
+        logoutButton.addEventListener('click', logout);
+        showLoginBtn.addEventListener('click', () => switchAuthForm('login'));
+        showSignupBtn.addEventListener('click', () => switchAuthForm('signup'));
+        navMain.addEventListener('click', () => switchAppView('main'));
+        navDashboard.addEventListener('click', () => switchAppView('dashboard'));
+        
+        manageAutoInvestBtn.addEventListener('click', () => { 
+            autoInvestModal.classList.remove('hidden'); 
+            autoSellToggle.checked = autoInvestState.autoSellEnabled; 
+            modalAllocationSlider.value = autoInvestState.investmentAllocation;
+            modalAllocationValue.textContent = `${autoInvestState.investmentAllocation}%`;
+        });
+        closeAutoInvestModalBtn.addEventListener('click', () => autoInvestModal.classList.add('hidden'));
+        modalRiskButtons.addEventListener('click', (e) => { if (e.target.tagName === 'BUTTON') { autoInvestState.risk = e.target.dataset.risk; modalRiskButtons.querySelectorAll('button').forEach(btn => btn.classList.replace('bg-sky-600', 'bg-gray-700')); e.target.classList.replace('bg-gray-700', 'bg-sky-600'); } });
+        modalLossSlider.addEventListener('input', (e) => { autoInvestState.lossThreshold = parseInt(e.target.value); modalLossValue.textContent = `${autoInvestState.lossThreshold}%`; });
+        autoSellToggle.addEventListener('change', (e) => { autoInvestState.autoSellEnabled = e.target.checked; });
+        modalAllocationSlider.addEventListener('input', (e) => { autoInvestState.investmentAllocation = parseInt(e.target.value); modalAllocationValue.textContent = `${autoInvestState.investmentAllocation}%`; });
+        toggleAutoInvestBtn.addEventListener('click', () => { toggleAutoInvest(!autoInvestState.isActive); autoInvestModal.classList.add('hidden'); });
+        addMoneyBtn.addEventListener('click', () => addMoneyModal.classList.remove('hidden'));
+        cancelAddMoneyBtn.addEventListener('click', () => addMoneyModal.classList.add('hidden'));
+        addMoneyForm.addEventListener('submit', (e) => { e.preventDefault(); const amount = parseFloat(document.getElementById('amount').value); if (!isNaN(amount) && amount > 0) { currentWalletBalance += amount; updateAllUI(); addActivity(`<span class="font-bold text-blue-400">DEPOSIT</span> ${formatCurrency(amount)} to wallet.`); } addMoneyForm.reset(); addMoneyModal.classList.add('hidden'); });
+
+        // --- INITIALIZATION ---
+        // showPage('auth');
+        authPage.classList.remove('hidden'); // Start with auth page visible
+        appContainer.classList.add('hidden');
+    });
+    </script>
+</body>
+</html>
+
